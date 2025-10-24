@@ -1,12 +1,9 @@
-# Danger-Assessment
-<!-- This initial project is going to be me using chat gpt to turn the Danger Assessment into a website. -->
-<!--doctype html-->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Danger Assessment — One Question at a Time</title>
+  <title>Danger Assessment — WAST → DA</title>
   <style>
     :root{
       --bg:#f4f7fb; --card:#ffffff; --muted:#666; --accent:#0b5fff;
@@ -23,7 +20,7 @@
     .progressFill{height:100%;width:0%;background:linear-gradient(90deg,#0b5fff,#3ea0ff);transition:width .35s ease}
     .questionCard{padding:18px;border-radius:10px;background:#fbfdff;border:1px solid rgba(11,95,255,0.04)}
     .qText{font-weight:700;margin-bottom:12px}
-    .choices{display:flex;gap:12px;align-items:center}
+    .choices{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .btnRow{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
     button.secondary{background:#eef5ff;color:var(--accent)}
@@ -43,8 +40,8 @@
 <body>
   <div class="container">
     <div class="card" role="main" aria-labelledby="title">
-      <h1 id="title">Danger Assessment — One Question at a Time</h1>
-      <p class="lead">Client-side educational prototype implementing the DA scoring. This tool is not a substitute for professional advice. If you are in immediate danger, call emergency services now.</p>
+      <h1 id="title">Danger Assessment — WAST → DA</h1>
+      <p class="lead">Client-side educational prototype. Not a substitute for professional advice. If you are in immediate danger, call emergency services now.</p>
 
       <div class="consent">
         <label style="display:flex;gap:8px;align-items:center">
@@ -62,8 +59,7 @@
           <div id="specialArea" class="qMeta" style="display:none"></div>
 
           <div class="choices" id="choices">
-            <label class="radioLabel"><input type="radio" name="answer" value="yes"> Yes</label>
-            <label class="radioLabel"><input type="radio" name="answer" value="no"> No</label>
+            <!-- radios generated dynamically -->
           </div>
 
           <div class="qMeta" id="qMeta" style="display:none"></div>
@@ -77,7 +73,7 @@
         </div>
 
         <div class="tiny" style="margin-top:12px">
-          <strong>Scoring rules (applied):</strong> Count "Yes" responses (Q1–Q20), then add weights: +4 for Q2 & Q3; +3 for Q4; +2 for Q5,Q6,Q7; +1 for Q8,Q9; subtract 3 if Q3 "threatened to kill" checkbox is checked. Categories: &lt;8 variable, 8–13 elevated, 14–17 high, 18+ extreme.
+          <strong>Note:</strong> This tool shows final WAST and DA results together only after both instruments are completed. WAST wording and scoring follow the validated instrument by Brown et al. (1996). :contentReference[oaicite:1]{index=1}
         </div>
       </div>
 
@@ -93,13 +89,29 @@
     </div>
 
     <footer class="tiny">
-      <p>Prototype &copy; Educational demo. No data stored or transmitted. For official guidance and training on the Danger Assessment, consult the DA manual and accredited training materials.</p>
+      <p>Prototype &copy; Educational demo. No data stored or transmitted. For official guidance and training, consult the WAST publications and DA manual.</p>
     </footer>
   </div>
 
   <script>
-    // Official 20 DA items (wording kept consistent with your permission)
-    const questions = [
+    // ------------------- WAST (8 items) -------------------
+    // WAST validated wording (Brown et al., 1996). Sources: PubMed summary and clinical references. :contentReference[oaicite:2]{index=2}
+    const wastItems = [
+      "1. In general, how would you describe your relationship? (A lot of tension / Some tension / No tension)",
+      "2. Do you and your partner work out arguments with: (Great difficulty / Some difficulty / No difficulty)",
+      "3. Do arguments ever result in you feeling down or bad about yourself? (Often / Sometimes / Never)",
+      "4. Do arguments ever result in hitting, kicking or pushing? (Often / Sometimes / Never)",
+      "5. Do you ever feel frightened by what your partner says or does? (Often / Sometimes / Never)",
+      "6. Has your partner ever abused you physically? (Often / Sometimes / Never)",
+      "7. Has your partner ever abused you emotionally? (Often / Sometimes / Never)",
+      "8. Has your partner ever abused you sexually? (Often / Sometimes / Never)"
+    ];
+    // For each WAST item, responses are scored: 1 = least (No/ Never/ No difficulty), 2 = Some / Sometimes, 3 = A lot / Often / Great difficulty
+    // WAST scoring range: 8 - 24. Interpretation:
+    // 8-13 = No/low risk; 14-17 = Possible abuse; 18-24 = Likely abuse
+
+    // ------------------- DA (20 items) -------------------
+    const daQuestions = [
       "1. Has the abuse increased in severity or frequency over the past year?",
       "2. Has he ever used a weapon (gun, knife) against you or threatened you with a weapon?",
       "3. Has he ever tried to choke you or strangle you?",
@@ -122,12 +134,15 @@
       "20. Do you live with him now?"
     ];
 
-    // We'll keep a parallel array for answers (null / 'yes' / 'no')
-    const answers = Array(questions.length).fill(null);
-    // Q3 "threat to kill" checkbox state (separate adjustment)
-    let q3Threat = false;
-
-    let idx = 0; // current question index 0..19
+    // Combined flow: WAST (8) then DA (20) => total 28 steps
+    const totalItems = wastItems.length + daQuestions.length; // 28
+    // Storage:
+    const wastAnswers = Array(wastItems.length).fill(null); // numeric 1..3
+    const daAnswers = Array(daQuestions.length).fill(null); // 'yes'/'no'
+    let q3Threat = false; // DA Q3 special checkbox remains (index 2 inside DA)
+    // overall index: 0 .. totalItems-1
+    let overallIdx = 0; // start at WAST Q1
+    let stage = 'WAST'; // 'WAST' or 'DA' or 'DONE'
 
     // DOM refs
     const consent = document.getElementById('consent');
@@ -146,36 +161,107 @@
       const ok = e.target.checked;
       app.style.display = ok ? 'block' : 'none';
       noConsent.style.display = ok ? 'none' : 'block';
-      if(ok) renderQuestion();
+      if(ok){
+        overallIdx = 0;
+        stage = 'WAST';
+        renderCurrent();
+      }
     });
 
     function updateProgress(){
-      const pct = Math.round((idx / questions.length) * 100);
+      // progress uses one continuous bar across totalItems
+      const pct = Math.round(((overallIdx) / (totalItems - 1)) * 100);
       progressFill.style.width = pct + '%';
     }
 
-    function renderQuestion(){
-      // Reset UI
+    function renderCurrent(){
+      // reset UI
       resultBox.style.display = 'none';
       qMeta.style.display = 'none';
       specialArea.style.display = 'none';
       choices.innerHTML = '';
       nextBtn.disabled = true;
 
-      // Show question
-      qText.textContent = questions[idx];
+      // Decide whether current item is WAST or DA
+      if(overallIdx < wastItems.length){
+        // WAST
+        stage = 'WAST';
+        const localIdx = overallIdx; // 0..7
+        qText.textContent = wastItems[localIdx];
+        // Create 3-option radios (values 1,2,3)
+        createWastRadios(wastAnswers[localIdx], (val)=>{
+          wastAnswers[localIdx] = Number(val);
+          nextBtn.disabled = false;
+        });
+        nextBtn.textContent = (overallIdx === totalItems - 1) ? 'Finish' : 'Next';
+        updateProgress();
+      } else {
+        // DA section
+        stage = 'DA';
+        const daIdx = overallIdx - wastItems.length; // 0..19
+        qText.textContent = daQuestions[daIdx];
+        // Show Yes/No radios
+        createYesNoRadios(daAnswers[daIdx], (val)=>{
+          daAnswers[daIdx] = val;
+          nextBtn.disabled = false;
+        });
+        // Show Q3 special checkbox when at DA index 3 (overallIdx such that daIdx === 2)
+        if(daIdx === 2){
+          specialArea.style.display = 'block';
+          specialArea.innerHTML = '';
+          const specialLabel = document.createElement('label');
+          specialLabel.style.display = 'inline-flex';
+          specialLabel.style.gap = '8px';
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.id = 'q3ThreatChk';
+          chk.checked = q3Threat;
+          chk.addEventListener('change', e => { q3Threat = e.target.checked; });
+          specialLabel.appendChild(chk);
+          specialLabel.append('Has he ever threatened to kill you? (check if applicable)');
+          specialArea.appendChild(specialLabel);
+        }
+        nextBtn.textContent = (overallIdx === totalItems - 1) ? 'Finish' : 'Next';
+        updateProgress();
+      }
+    }
 
-      // Create Yes/No radios
-      const yesId = 'ans_yes';
-      const noId = 'ans_no';
+    function createWastRadios(currentValue, onChange){
+      // For WAST the labeling differs by item, but we use the validated response labels generically:
+      // Option 3 = highest frequency/severity, Option 1 = lowest
+      // For items 1: A lot of tension / Some tension / No tension  -> map to 3/2/1
+      // For item 2: Great difficulty / Some difficulty / No difficulty -> 3/2/1
+      // For items 3-8: Often / Sometimes / Never -> 3/2/1
+      const opts = [
+        {val:'3', label:'3 — Highest (A lot / Great difficulty / Often)'},
+        {val:'2', label:'2 — Moderate (Some / Some difficulty / Sometimes)'},
+        {val:'1', label:'1 — Lowest (No / No difficulty / Never)'}
+      ];
+      opts.forEach(o=>{
+        const lab = document.createElement('label');
+        lab.className = 'radioLabel';
+        const inp = document.createElement('input');
+        inp.type = 'radio';
+        inp.name = 'answer';
+        inp.value = o.val;
+        lab.appendChild(inp);
+        lab.append(' ' + o.label);
+        choices.appendChild(lab);
+        if(Number(currentValue) === Number(o.val)) inp.checked = true;
+      });
+      const radios = choices.querySelectorAll('input[name="answer"]');
+      radios.forEach(r=>{
+        r.addEventListener('change', ()=> onChange(r.value));
+      });
+    }
 
+    function createYesNoRadios(currentValue, onChange){
       const yesLabel = document.createElement('label');
       yesLabel.className = 'radioLabel';
       const yesInput = document.createElement('input');
       yesInput.type = 'radio';
       yesInput.name = 'answer';
       yesInput.value = 'yes';
-      yesInput.id = yesId;
       yesLabel.appendChild(yesInput);
       yesLabel.append(' Yes');
 
@@ -185,89 +271,74 @@
       noInput.type = 'radio';
       noInput.name = 'answer';
       noInput.value = 'no';
-      noInput.id = noId;
       noLabel.appendChild(noInput);
       noLabel.append(' No');
 
       choices.appendChild(yesLabel);
       choices.appendChild(noLabel);
 
-      // If user previously answered, restore selection
-      if(answers[idx] === 'yes') yesInput.checked = true;
-      if(answers[idx] === 'no') noInput.checked = true;
+      if(currentValue === 'yes') yesInput.checked = true;
+      if(currentValue === 'no') noInput.checked = true;
 
-      // Special handling for Q3 (index 2): show an extra checkbox for "threat to kill"
-      if(idx === 2){
-        specialArea.style.display = 'block';
-        specialArea.innerHTML = '';
-        const specialLabel = document.createElement('label');
-        specialLabel.style.display = 'inline-flex';
-        specialLabel.style.gap = '8px';
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        chk.id = 'q3ThreatChk';
-        chk.checked = q3Threat;
-        chk.addEventListener('change', e => { q3Threat = e.target.checked; });
-        specialLabel.appendChild(chk);
-        specialLabel.append('Has he ever threatened to kill you? (check if applicable)');
-        specialArea.appendChild(specialLabel);
-      }
-
-      // Add event listeners to radios to enable Next
       const radios = choices.querySelectorAll('input[name="answer"]');
       radios.forEach(r=>{
         r.addEventListener('change', () => {
-          // store answer
-          answers[idx] = r.value;
-          nextBtn.disabled = false;
+          onChange(r.value);
         });
       });
-
-      // Update progress
-      updateProgress();
-
-      // Change button text to Submit if last question
-      nextBtn.textContent = (idx === questions.length - 1) ? 'Submit' : 'Next';
     }
 
     nextBtn.addEventListener('click', ()=>{
-      // Require an answer (except we already enforce enabled only when answered)
-      if(!answers[idx]){
-        nextBtn.disabled = true;
+      // ensure an answer exists for current index
+      if(overallIdx < wastItems.length){
+        if(wastAnswers[overallIdx] === null){ nextBtn.disabled = true; return; }
+      } else {
+        const daIdx = overallIdx - wastItems.length;
+        if(daAnswers[daIdx] === null){ nextBtn.disabled = true; return; }
+      }
+
+      // advance or finish
+      if(overallIdx === totalItems - 1){
+        // finished both instruments - compute combined results
+        showCombinedResults();
         return;
       }
-      // If last -> compute result
-      if(idx === questions.length -1){
-        showResults();
-        return;
-      }
-      // Advance
-      idx++;
-      renderQuestion();
+      overallIdx++;
+      renderCurrent();
     });
 
     resetBtn.addEventListener('click', ()=>{
       if(!confirm('Reset all answers?')) return;
-      for(let i=0;i<answers.length;i++) answers[i]=null;
+      for(let i=0;i<wastAnswers.length;i++) wastAnswers[i]=null;
+      for(let j=0;j<daAnswers.length;j++) daAnswers[j]=null;
       q3Threat = false;
-      idx = 0;
-      renderQuestion();
+      overallIdx = 0;
+      stage = 'WAST';
+      renderCurrent();
       progressFill.style.width = '0%';
     });
 
-    function showResults(){
-      // Compute base yes count across Q1..Q20
-      let baseYes = 0;
-      for(let i=0;i<questions.length;i++){
-        if(answers[i] === 'yes') baseYes++;
+    // ------------- Scoring & Results -------------
+    function computeWAST(){
+      // Sum numeric answers (1..3). If any unanswered, treat as 0; but we require completion so all should be present.
+      let total = 0;
+      for(let i=0;i<wastAnswers.length;i++){
+        total += (Number(wastAnswers[i]) || 0);
       }
+      let category = '';
+      if(total <= 13) category = 'No / Low risk';
+      else if(total <=17) category = 'Possible abuse';
+      else category = 'Likely abuse';
+      return { total, category };
+    }
 
-      // Weighted scoring per rules
-      // Q numbering: 1-based
-      function answeredYes(qnum){
-        // qnum 1..20 maps to index qnum-1
-        return answers[qnum-1] === 'yes';
+    function computeDA(){
+      // Base yes count across DA
+      let baseYes = 0;
+      for(let i=0;i<daQuestions.length;i++){
+        if(daAnswers[i] === 'yes') baseYes++;
       }
+      function answeredYes(qnum){ return daAnswers[qnum-1] === 'yes'; }
       let score = baseYes;
       if(answeredYes(2)) score += 4;
       if(answeredYes(3)) score += 4;
@@ -277,9 +348,8 @@
       if(answeredYes(7)) score += 2;
       if(answeredYes(8)) score += 1;
       if(answeredYes(9)) score += 1;
-      if(q3Threat) score -= 3;
+      if(q3Threat) score -= 3; // as in your original logic
 
-      // Determine category
       let category = '', cls='', expl='';
       if(score < 8){
         category = 'Variable danger';
@@ -299,29 +369,38 @@
         expl = 'Your score indicates Extreme danger. This suggests a very high risk. Contact emergency services if you are in immediate danger, and reach a domestic violence advocate now.';
       }
 
-      // Show result
+      return { score, baseYes, category, cls, expl };
+    }
+
+    function showCombinedResults(){
+      // Compute both
+      const wast = computeWAST();
+      const da = computeDA();
+
       resultBox.style.display = 'block';
-      resultBox.className = 'result ' + cls;
+      resultBox.className = 'result ' + da.cls;
       resultBox.innerHTML = `
-        <div style="font-weight:700;font-size:1.05rem">Score: ${score} — ${category}</div>
-        <div style="margin-top:8px">${expl}</div>
-        <div style="margin-top:8px" class="tiny">Base yes count (Q1–Q20): ${baseYes}. Weighted scoring applied per official DA guidance.</div>
+        <div style="font-weight:700;font-size:1.05rem">Results</div>
+
+        <div style="margin-top:10px;font-weight:700">WAST (Woman Abuse Screening Tool) — Score: ${wast.total} — ${wast.category}</div>
+        <div style="margin-top:6px" class="tiny">WAST scoring range: 8–24. Interpretation: 8–13 = No/Low risk; 14–17 = Possible abuse; 18–24 = Likely abuse. (Brown et al., 1996).</div>
+
+        <div style="margin-top:12px;font-weight:700">Danger Assessment (DA) — Score: ${da.score} — ${da.category}</div>
+        <div style="margin-top:8px">${da.expl}</div>
+        <div style="margin-top:8px" class="tiny">Base yes count (Q1–Q20): ${da.baseYes}. Weighted scoring applied per official DA guidance.</div>
+
         <div style="margin-top:12px;font-weight:700">Resources: If in immediate danger call emergency services. US National Domestic Violence Hotline: 1-800-799-7233 (thehotline.org).</div>
         <div style="margin-top:12px"><button id="printBtn" class="secondary">Print / Save Result</button></div>
       `;
-      // set progress to full
       progressFill.style.width = '100%';
-      // wire print button
       document.getElementById('printBtn').addEventListener('click', ()=>window.print());
-      // scroll to result
       resultBox.scrollIntoView({behavior:'smooth'});
-      // allow user to still reset if they want
+      stage = 'DONE';
     }
 
-    // Init: when page loaded, disable Next until consent
-    document.addEventListener('DOMContentLoaded', ()=>{
-      // nothing until consent checked
-    });
+    // init nothing until consent
+    document.addEventListener('DOMContentLoaded', ()=>{ /* user must check consent to begin */ });
+
   </script>
 </body>
 </html>
