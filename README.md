@@ -394,8 +394,37 @@
       async function fetchResourcesByZip(zip){
         resultsDiv.innerHTML='<p class="tiny">Searching resources near '+zip+'...</p>';
         try{
-          // Example: Using findhelp.org search API
+          // Example: Using findhelp.org search API (may require an API key or server-side proxy)
           const resp=await fetch(`https://api.findhelp.org/api/v1/search/?postal=${zip}&limit=5`);
+          if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
+          const data=await resp.json();
+          if(!data || !data.results || !data.results.length){
+            // Fallback when API returns no results
+            resultsDiv.innerHTML = `
+              <div class="tiny">No resources found from the search API for <strong>${zip}</strong>.</div>
+              <div style="margin-top:8px" class="tiny">Try these options:</div>
+              <ul class="tiny">
+                <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+                <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+                <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
+              </ul>`;
+            return;
+          }
+          showResources(data, resultsDiv);
+        }catch(e){
+          console.error('Resource fetch error (zip):', e);
+          // Helpful fallback message explaining likely causes (CORS, API key) and providing alternatives
+          resultsDiv.innerHTML = `
+            <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
+            <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+            <ul class="tiny">
+              <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+              <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
+            </ul>
+            <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
+        }
+      }&limit=5`);
           if(!resp.ok)throw new Error('Search failed');
           const data=await resp.json();
           showResources(data, resultsDiv);
@@ -407,7 +436,35 @@
       async function fetchResourcesByCoords(lat,lon){
         resultsDiv.innerHTML='<p class="tiny">Searching resources near your location...</p>';
         try{
+          // Example: Using findhelp.org search API (may require an API key or server-side proxy)
           const resp=await fetch(`https://api.findhelp.org/api/v1/search/?latitude=${lat}&longitude=${lon}&limit=5`);
+          if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
+          const data=await resp.json();
+          if(!data || !data.results || !data.results.length){
+            resultsDiv.innerHTML = `
+              <div class="tiny">No resources found from the search API for your location.</div>
+              <div style="margin-top:8px" class="tiny">Try these options:</div>
+              <ul class="tiny">
+                <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+                <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+                <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${lat},${lon}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
+              </ul>`;
+            return;
+          }
+          showResources(data, resultsDiv);
+        }catch(e){
+          console.error('Resource fetch error (coords):', e);
+          resultsDiv.innerHTML = `
+            <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
+            <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+            <ul class="tiny">
+              <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+              <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${lat},${lon}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
+            </ul>
+            <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
+        }
+      }&longitude=${lon}&limit=5`);
           if(!resp.ok)throw new Error('Search failed');
           const data=await resp.json();
           showResources(data, resultsDiv);
@@ -435,6 +492,13 @@
         hideModal();
       }
     });
+
+    // initial render does not show modal
+    function showModal(section){
+      // This function is overridden earlier; keep compatibility by toggling visibility
+      // (the earlier definition populates the modal content)
+      infoModal.style.display='block';
+    }
 
     // Ensure renderCurrent defined earlier works
     renderCurrent();
