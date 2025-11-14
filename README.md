@@ -24,6 +24,7 @@
     .btnRow{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
     button.secondary{background:#eef5ff;color:var(--accent)}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid rgba(11,95,255,0.08)}
     button[disabled]{opacity:.5;cursor:not-allowed}
     .muted{color:var(--muted);font-size:.95rem}
     .result{padding:16px;border-radius:10px;margin-top:12px}
@@ -34,6 +35,14 @@
     .tiny{font-size:.88rem;color:var(--muted)}
     label.radioLabel{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:8px;border:1px solid #e6eefc}
     .qMeta{margin-top:10px;color:var(--muted);font-size:.92rem}
+    .brief-desc{background:#fbfdff;border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid rgba(11,95,255,0.04)}
+
+    /* modal */
+    .modalBackdrop{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+    .modal{max-width:760px;width:100%;background:#fff;border-radius:12px;padding:18px;box-shadow:0 12px 40px rgba(2,6,23,0.15);max-height:80vh;overflow:auto}
+    .modal h3{margin-top:0}
+    .modalClose{float:right;background:transparent;border:0;font-weight:700;color:var(--muted);cursor:pointer}
+
     @media(min-width:720px){ .questionCard{padding:24px} }
   </style>
 </head>
@@ -42,6 +51,14 @@
     <div class="card" role="main" aria-labelledby="title">
       <h1 id="title">Danger Assessment — WAST → DA</h1>
       <p class="lead">Client-side educational prototype. Not a substitute for professional advice. If you are in immediate danger, call emergency services now.</p>
+
+      <!-- Brief descriptions displayed at the start so users can contextualize up front -->
+      <div class="brief-desc" aria-hidden="false">
+        <strong>What these assessments measure (brief):</strong>
+        <p class="tiny" style="margin:8px 0 0">The <strong>WAST</strong> (Women Abuse Screening Tool) is a short survey that screens for patterns of tension and abuse in a relationship. It helps identify possible or likely abuse but is not a diagnostic instrument.</p>
+        <p class="tiny" style="margin:6px 0 0">The <strong>Danger Assessment (DA)</strong> evaluates factors associated with risk of serious or lethal violence. It uses yes/no items to estimate danger levels and inform safety planning.</p>
+        <div style="margin-top:8px"><button id="learnMoreBtn" class="ghost" type="button">Learn more about these assessments</button></div>
+      </div>
 
       <div class="consent">
         <label style="display:flex;gap:8px;align-items:center">
@@ -91,6 +108,17 @@
     <footer class="tiny">
       <p>Prototype &copy; Educational demo. No data stored or transmitted. For official guidance and training, consult the WAST publications and DA manual.</p>
     </footer>
+  </div>
+
+  <!-- Modal used to show comprehensive descriptions when requested -->
+  <div id="infoModal" style="display:none">
+    <div class="modalBackdrop" role="dialog" aria-modal="true">
+      <div class="modal" id="modalContent">
+        <button class="modalClose" id="closeModal">✕</button>
+        <h3 id="modalTitle">Assessment details</h3>
+        <div id="modalBody" style="margin-top:8px"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -147,6 +175,11 @@
     const specialArea = document.getElementById('specialArea');
     const qMeta = document.getElementById('qMeta');
     const resultBox = document.getElementById('resultBox');
+    const learnMoreBtn = document.getElementById('learnMoreBtn');
+    const infoModal = document.getElementById('infoModal');
+    const modalBody = document.getElementById('modalBody');
+    const modalTitle = document.getElementById('modalTitle');
+    const closeModal = document.getElementById('closeModal');
 
     consent.addEventListener('change', e=>{
       const ok = e.target.checked;
@@ -154,6 +187,52 @@
       noConsent.style.display = ok ? 'none' : 'block';
       if(ok){ overallIdx = 0; stage = 'WAST'; renderCurrent(); }
     });
+
+    learnMoreBtn.addEventListener('click',()=>{ showModal('overview'); });
+    closeModal.addEventListener('click',()=>{ hideModal(); });
+
+    function showModal(section){
+      infoModal.style.display='block';
+      modalBody.innerHTML='';
+      if(section==='overview'){
+        modalTitle.textContent='About the WAST and Danger Assessment (detailed)';
+        modalBody.innerHTML = `
+          <h4>WAST — What it measures</h4>
+          <p>The Women Abuse Screening Tool (WAST) is a brief screening instrument developed to identify relationship tension and potential abuse. It asks about conflict, how arguments are resolved, and the emotional and physical consequences of arguments. Scores suggest risk categories (No/Low risk, Possible abuse, Likely abuse) but are not a clinical diagnosis. If your results indicate possible or likely abuse, consider seeking support from a trained professional.</p>
+
+          <h4>Danger Assessment (DA) — What it measures</h4>
+          <p>The Danger Assessment asks about specific behaviors and risk factors tied to severe or lethal intimate partner violence (e.g., weapon use, strangulation, threats to kill, escalation in frequency). Items are weighted in scoring because some factors correlate strongly with lethal outcomes. The DA categories (Variable, Elevated, High, Extreme danger) are intended to assist safety planning — higher scores indicate higher risk and may warrant immediate safety actions and professional intervention.</p>
+
+          <h4>Important notes</h4>
+          <p>These tools are educational and screening tools. They do not replace clinical assessment. If you are in immediate danger, call emergency services. If you are concerned after completing the assessment, contact local support services or the national hotline provided on this page.</p>
+        `;
+      } else if(section==='results'){
+        modalTitle.textContent='Interpreting your results — Comprehensive guide';
+        modalBody.innerHTML = `
+          <h4>WAST score interpretation (comprehensive)</h4>
+          <p>The WAST yields a numerical score (range 8–24). Lower scores indicate fewer reported tensions or incidents; higher scores indicate more frequent or severe issues. Typical breakpoints used here are:</p>
+          <ul>
+            <li><strong>No / Low risk:</strong> responses largely indicating no tension or conflict resolution — recommends monitoring and routine supports.</li>
+            <li><strong>Possible abuse:</strong> signs of conflict and some harmful behaviors — consider discussing concerns with a counselor or advocate.</li>
+            <li><strong>Likely abuse:</strong> repeated or severe patterns — professional intervention and safety planning recommended.</li>
+          </ul>
+
+          <h4>Danger Assessment (DA) scoring — details</h4>
+          <p>The DA assigns weights to certain items (for example, weapon use, strangulation, prior attempts to kill) because these are strong predictors of severe harm. The numeric score translates into categories used to guide urgency:</p>
+          <ul>
+            <li><strong>Variable danger (lower scores):</strong> Some risk factors present; consider creating a safety plan and accessing support.</li>
+            <li><strong>Elevated danger:</strong> Multiple concerning factors; reach out to local services and consider additional safety measures.</li>
+            <li><strong>High danger:</strong> Several high-risk indicators present — prioritize immediate safety planning and professional help.</li>
+            <li><strong>Extreme danger:</strong> Very high likelihood of severe or lethal violence — contact emergency services if in immediate danger and engage specialized domestic violence services.</li>
+          </ul>
+
+          <h4>Next steps and resources</h4>
+          <p>Higher scores do not mean blame; they indicate a need for protective action. Consider contacting hotlines, local shelters, and healthcare or advocacy professionals who can help tailor a safety plan.</p>
+        `;
+      }
+    }
+
+    function hideModal(){ infoModal.style.display='none'; }
 
     function updateProgress(){
       const pct = Math.round(((overallIdx) / (totalItems - 1)) * 100);
@@ -269,7 +348,7 @@
         <div style="margin-top:8px">${da.expl}</div>
         <div style="margin-top:8px" class="tiny">Base yes count: ${da.baseYes}</div>
         <div style="margin-top:12px;font-weight:700">Resources: If in immediate danger call emergency services. US National Domestic Violence Hotline: 1-800-799-7233.</div>
-        <div style="margin-top:12px"><button id="printBtn" class="secondary">Print / Save Result</button></div>
+        <div style="margin-top:12px"><button id="printBtn" class="secondary">Print / Save Result</button> <button id="viewDetailsBtn" class="ghost" type="button">View comprehensive description of results</button></div>
 
         <!-- Local resource finder appended below results -->
         <div id="localResourcesCard" class="card" style="margin-top:20px">
@@ -285,6 +364,7 @@
       `;
       progressFill.style.width='100%';
       document.getElementById('printBtn').addEventListener('click',()=>window.print());
+      document.getElementById('viewDetailsBtn').addEventListener('click',()=>{ showModal('results'); });
       resultBox.scrollIntoView({behavior:'smooth'});
       stage='DONE';
       setupResourceFinder();
@@ -307,7 +387,7 @@
         resultsDiv.innerHTML='<p class="tiny">Locating...</p>';
         navigator.geolocation.getCurrentPosition(
           pos=>fetchResourcesByCoords(pos.coords.latitude,pos.coords.longitude),
-          err=>{resultsDiv.innerHTML='<p class="tiny">Location permission denied.</p>';}
+          err=>{resultsDiv.innerHTML='<p class="tiny">Location permission denied.</p>';} 
         );
       });
 
@@ -348,6 +428,24 @@
         container.innerHTML='<div>'+items+'</div>';
       }
     }
+
+    // Close modal if backdrop clicked
+    document.addEventListener('click', (e)=>{
+      if(e.target && e.target.classList && e.target.classList.contains('modalBackdrop')){
+        hideModal();
+      }
+    });
+
+    // initial render does not show modal
+    function showModal(section){
+      // This function is overridden earlier; keep compatibility by toggling visibility
+      // (the earlier definition populates the modal content)
+      infoModal.style.display='block';
+    }
+
+    // Ensure renderCurrent defined earlier works
+    renderCurrent();
+
   </script>
 </body>
 </html>
