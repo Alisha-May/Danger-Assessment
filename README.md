@@ -111,7 +111,7 @@
   </div>
 
   <!-- Modal used to show comprehensive descriptions when requested -->
-  <div id="infoModal" style="display:none">
+  <div id="infoModal" style="display:none" aria-hidden="true">
     <div class="modalBackdrop" role="dialog" aria-modal="true">
       <div class="modal" id="modalContent">
         <button class="modalClose" id="closeModal">✕</button>
@@ -164,6 +164,7 @@
     let overallIdx = 0;
     let stage = 'WAST';
 
+    // DOM references
     const consent = document.getElementById('consent');
     const app = document.getElementById('app');
     const noConsent = document.getElementById('noConsent');
@@ -181,21 +182,27 @@
     const modalTitle = document.getElementById('modalTitle');
     const closeModal = document.getElementById('closeModal');
 
+    // Consent checkbox toggles the app
     consent.addEventListener('change', e=>{
       const ok = e.target.checked;
       app.style.display = ok ? 'block' : 'none';
       noConsent.style.display = ok ? 'none' : 'block';
-      if(ok){ overallIdx = 0; stage = 'WAST'; renderCurrent(); }
+      if(ok){
+        overallIdx = 0;
+        stage = 'WAST';
+        renderCurrent();
+      }
     });
 
-    learnMoreBtn.addEventListener('click',()=>{ showModal('overview'); });
-    closeModal.addEventListener('click',()=>{ hideModal(); });
+    // Modal handlers
+    learnMoreBtn.addEventListener('click', ()=> showModal('overview'));
+    closeModal.addEventListener('click', hideModal);
 
     function showModal(section){
-      infoModal.style.display='block';
-      modalBody.innerHTML='';
-      if(section==='overview'){
-        modalTitle.textContent='About the WAST and Danger Assessment (detailed)';
+      // Populate modal content, then show
+      modalBody.innerHTML = '';
+      if(section === 'overview'){
+        modalTitle.textContent = 'About the WAST and Danger Assessment (detailed)';
         modalBody.innerHTML = `
           <h4>WAST — What it measures</h4>
           <p>The Women Abuse Screening Tool (WAST) is a brief screening instrument developed to identify relationship tension and potential abuse. It asks about conflict, how arguments are resolved, and the emotional and physical consequences of arguments. Scores suggest risk categories (No/Low risk, Possible abuse, Likely abuse) but are not a clinical diagnosis. If your results indicate possible or likely abuse, consider seeking support from a trained professional.</p>
@@ -206,8 +213,8 @@
           <h4>Important notes</h4>
           <p>These tools are educational and screening tools. They do not replace clinical assessment. If you are in immediate danger, call emergency services. If you are concerned after completing the assessment, contact local support services or the national hotline provided on this page.</p>
         `;
-      } else if(section==='results'){
-        modalTitle.textContent='Interpreting your results — Comprehensive guide';
+      } else if(section === 'results'){
+        modalTitle.textContent = 'Interpreting your results — Comprehensive guide';
         modalBody.innerHTML = `
           <h4>WAST score interpretation (comprehensive)</h4>
           <p>The WAST yields a numerical score (range 8–24). Lower scores indicate fewer reported tensions or incidents; higher scores indicate more frequent or severe issues. Typical breakpoints used here are:</p>
@@ -230,15 +237,29 @@
           <p>Higher scores do not mean blame; they indicate a need for protective action. Consider contacting hotlines, local shelters, and healthcare or advocacy professionals who can help tailor a safety plan.</p>
         `;
       }
+      infoModal.style.display = 'block';
+      infoModal.setAttribute('aria-hidden', 'false');
     }
 
-    function hideModal(){ infoModal.style.display='none'; }
+    function hideModal(){
+      infoModal.style.display = 'none';
+      infoModal.setAttribute('aria-hidden', 'true');
+    }
 
+    // Close modal when clicking backdrop
+    document.addEventListener('click', (e)=>{
+      if(e.target && e.target.classList && e.target.classList.contains('modalBackdrop')){
+        hideModal();
+      }
+    });
+
+    // Progress update
     function updateProgress(){
       const pct = Math.round(((overallIdx) / (totalItems - 1)) * 100);
       progressFill.style.width = pct + '%';
     }
 
+    // Render current question (WAST then DA)
     function renderCurrent(){
       resultBox.style.display = 'none';
       qMeta.style.display = 'none';
@@ -275,6 +296,7 @@
       }
     }
 
+    // Radio builders
     function createWastRadios(currentValue,onChange){
       const opts=[
         {val:'3',label:'3 — Highest (A lot / Great difficulty / Often)'},
@@ -302,6 +324,7 @@
       choices.querySelectorAll('input[name="answer"]').forEach(r=>r.addEventListener('change',()=>onChange(r.value)));
     }
 
+    // Navigation buttons
     nextBtn.addEventListener('click',()=>{
       if(overallIdx< wastItems.length && wastAnswers[overallIdx]==null) return;
       if(overallIdx>=wastItems.length){
@@ -317,6 +340,7 @@
       wastAnswers.fill(null); daAnswers.fill(null); q3Threat=false; overallIdx=0; stage='WAST'; renderCurrent(); progressFill.style.width='0%';
     });
 
+    // Scoring
     function computeWAST(){
       let total=0; wastAnswers.forEach(x=> total+=(Number(x)||0));
       let category=''; if(total<=13) category='No / Low risk'; else if(total<=17) category='Possible abuse'; else category='Likely abuse';
@@ -337,6 +361,7 @@
       return {score,baseYes,category,cls,expl};
     }
 
+    // Show combined results and local finder
     function showCombinedResults(){
       const wast=computeWAST(); const da=computeDA();
       resultBox.style.display='block'; resultBox.className='result '+da.cls;
@@ -364,12 +389,13 @@
       `;
       progressFill.style.width='100%';
       document.getElementById('printBtn').addEventListener('click',()=>window.print());
-      document.getElementById('viewDetailsBtn').addEventListener('click',()=>{ showModal('results'); });
+      document.getElementById('viewDetailsBtn').addEventListener('click',()=> showModal('results'));
       resultBox.scrollIntoView({behavior:'smooth'});
       stage='DONE';
       setupResourceFinder();
     }
 
+    // Resource finder wiring and API calls (keeps live API + fallback)
     function setupResourceFinder(){
       const zipInput=document.getElementById('zipInput');
       const zipSearchBtn=document.getElementById('zipSearchBtn');
@@ -379,128 +405,103 @@
       zipSearchBtn.addEventListener('click',()=>{
         const zip=zipInput.value.trim();
         if(!zip){resultsDiv.innerHTML='<p class="tiny">Please enter a ZIP code.</p>';return;}
-        fetchResourcesByZip(zip);
+        fetchResourcesByZip(zip, resultsDiv);
       });
 
       locSearchBtn.addEventListener('click',()=>{
         if(!navigator.geolocation){resultsDiv.innerHTML='<p class="tiny">Geolocation not supported.</p>';return;}
         resultsDiv.innerHTML='<p class="tiny">Locating...</p>';
         navigator.geolocation.getCurrentPosition(
-          pos=>fetchResourcesByCoords(pos.coords.latitude,pos.coords.longitude),
-          err=>{resultsDiv.innerHTML='<p class="tiny">Location permission denied.</p>';} 
+          pos=>fetchResourcesByCoords(pos.coords.latitude,pos.coords.longitude, resultsDiv),
+          err=>{resultsDiv.innerHTML='<p class="tiny">Location permission denied.</p>';}
         );
       });
+    }
 
-      async function fetchResourcesByZip(zip){
-        resultsDiv.innerHTML='<p class="tiny">Searching resources near '+zip+'...</p>';
-        try{
-          // Example: Using findhelp.org search API (may require an API key or server-side proxy)
-          const resp=await fetch(`https://api.findhelp.org/api/v1/search/?postal=${zip}&limit=5`);
-          if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
-          const data=await resp.json();
-          if(!data || !data.results || !data.results.length){
-            // Fallback when API returns no results
-            resultsDiv.innerHTML = `
-              <div class="tiny">No resources found from the search API for <strong>${zip}</strong>.</div>
-              <div style="margin-top:8px" class="tiny">Try these options:</div>
-              <ul class="tiny">
-                <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-                <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-                <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
-              </ul>`;
-            return;
-          }
-          showResources(data, resultsDiv);
-        }catch(e){
-          console.error('Resource fetch error (zip):', e);
-          // Helpful fallback message explaining likely causes (CORS, API key) and providing alternatives
+    // Fetch by ZIP (uses findhelp.org, may require API key/CORS; falls back to helpful links)
+    async function fetchResourcesByZip(zip, resultsDiv){
+      resultsDiv.innerHTML='<p class="tiny">Searching resources near '+zip+'...</p>';
+      try{
+        const resp=await fetch(`https://api.findhelp.org/api/v1/search/?postal=${encodeURIComponent(zip)}&limit=5`);
+        if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
+        const data=await resp.json();
+
+        if(!data || !data.results || !data.results.length){
           resultsDiv.innerHTML = `
-            <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
-            <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+            <div class="tiny">No resources found from the search API for <strong>${zip}</strong>.</div>
+            <div style="margin-top:8px" class="tiny">Try these options:</div>
             <ul class="tiny">
               <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
               <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
               <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
-            </ul>
-            <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
+            </ul>`;
+          return;
         }
-      }&limit=5`);
-          if(!resp.ok)throw new Error('Search failed');
-          const data=await resp.json();
-          showResources(data, resultsDiv);
-        }catch(e){
-          resultsDiv.innerHTML='<p class="tiny">Unable to fetch resources. Please try later.</p>';
-        }
-      }
 
-      async function fetchResourcesByCoords(lat,lon){
-        resultsDiv.innerHTML='<p class="tiny">Searching resources near your location...</p>';
-        try{
-          // Example: Using findhelp.org search API (may require an API key or server-side proxy)
-          const resp=await fetch(`https://api.findhelp.org/api/v1/search/?latitude=${lat}&longitude=${lon}&limit=5`);
-          if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
-          const data=await resp.json();
-          if(!data || !data.results || !data.results.length){
-            resultsDiv.innerHTML = `
-              <div class="tiny">No resources found from the search API for your location.</div>
-              <div style="margin-top:8px" class="tiny">Try these options:</div>
-              <ul class="tiny">
-                <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-                <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-                <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${lat},${lon}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
-              </ul>`;
-            return;
-          }
-          showResources(data, resultsDiv);
-        }catch(e){
-          console.error('Resource fetch error (coords):', e);
+        showResources(data, resultsDiv);
+      }catch(e){
+        console.error('Resource fetch error (zip):', e);
+        resultsDiv.innerHTML = `
+          <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
+          <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+          <ul class="tiny">
+            <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+            <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+            <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
+          </ul>
+          <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
+      }
+    }
+
+    // Fetch by coords (similar behavior)
+    async function fetchResourcesByCoords(lat, lon, resultsDiv){
+      resultsDiv.innerHTML='<p class="tiny">Searching resources near your location...</p>';
+      try{
+        const resp=await fetch(`https://api.findhelp.org/api/v1/search/?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&limit=5`);
+        if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
+        const data=await resp.json();
+
+        if(!data || !data.results || !data.results.length){
           resultsDiv.innerHTML = `
-            <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
-            <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+            <div class="tiny">No resources found from the search API for your location.</div>
+            <div style="margin-top:8px" class="tiny">Try these options:</div>
             <ul class="tiny">
               <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
               <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${lat},${lon}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
-            </ul>
-            <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
+              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(lat)},${encodeURIComponent(lon)}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
+            </ul>`;
+          return;
         }
-      }&longitude=${lon}&limit=5`);
-          if(!resp.ok)throw new Error('Search failed');
-          const data=await resp.json();
-          showResources(data, resultsDiv);
-        }catch(e){
-          resultsDiv.innerHTML='<p class="tiny">Unable to fetch resources. Please try later.</p>';
-        }
-      }
 
-      function showResources(data, container){
-        if(!data || !data.results || !data.results.length){ container.innerHTML='<p class="tiny">No resources found nearby.</p>'; return; }
-        const items=data.results.map(r=>`
-          <div style="padding:8px 0;border-bottom:1px solid #eee">
-            <strong>${r.name||'Unnamed Resource'}</strong><br/>
-            ${r.address1||''} ${r.city||''}<br/>
-            ${r.phone_number?'<a href="tel:'+r.phone_number+'">'+r.phone_number+'</a><br/>':''}
-            ${r.url?'<a href="'+r.url+'" target="_blank" rel="noopener">Website</a>':''}
-          </div>`).join('');
-        container.innerHTML='<div>'+items+'</div>';
+        showResources(data, resultsDiv);
+      }catch(e){
+        console.error('Resource fetch error (coords):', e);
+        resultsDiv.innerHTML = `
+          <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
+          <div style="margin-top:8px" class="tiny">Try these options instead:</div>
+          <ul class="tiny">
+            <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
+            <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+            <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(lat)},${encodeURIComponent(lon)}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
+          </ul>
+          <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
       }
     }
 
-    // Close modal if backdrop clicked
-    document.addEventListener('click', (e)=>{
-      if(e.target && e.target.classList && e.target.classList.contains('modalBackdrop')){
-        hideModal();
-      }
-    });
-
-    // initial render does not show modal
-    function showModal(section){
-      // This function is overridden earlier; keep compatibility by toggling visibility
-      // (the earlier definition populates the modal content)
-      infoModal.style.display='block';
+    // Render results from API
+    function showResources(data, container){
+      if(!data || !data.results || !data.results.length){ container.innerHTML='<p class="tiny">No resources found nearby.</p>'; return; }
+      const items=data.results.map(r=>`
+        <div style="padding:8px 0;border-bottom:1px solid #eee">
+          <strong>${r.name||'Unnamed Resource'}</strong><br/>
+          ${r.address1||''} ${r.city||''}<br/>
+          ${r.phone_number?'<a href="tel:'+r.phone_number+'">'+r.phone_number+'</a><br/>':''}
+          ${r.url?'<a href="'+r.url+'" target="_blank" rel="noopener">Website</a>':''}
+        </div>`).join('');
+      container.innerHTML='<div>'+items+'</div>';
     }
 
-    // Ensure renderCurrent defined earlier works
+    // Initial render (app hidden until consent)
     renderCurrent();
 
   </script>
