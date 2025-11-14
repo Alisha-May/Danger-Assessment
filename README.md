@@ -436,13 +436,6 @@
       }
     });
 
-    // initial render does not show modal
-    function showModal(section){
-      // This function is overridden earlier; keep compatibility by toggling visibility
-      // (the earlier definition populates the modal content)
-      infoModal.style.display='block';
-    }
-
     // Ensure renderCurrent defined earlier works
     renderCurrent();
 
