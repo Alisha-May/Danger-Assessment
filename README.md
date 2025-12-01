@@ -43,6 +43,67 @@
     .modal h3{margin-top:0}
     .modalClose{float:right;background:transparent;border:0;font-weight:700;color:var(--muted);cursor:pointer}
 
+    /* Local Resources Finder Styles */
+    .location-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      background:var(--accent);color:#fff;border:0;
+      padding:12px 20px;border-radius:10px;cursor:pointer;font-weight:600;
+      transition:opacity .2s ease;
+    }
+    .location-btn:hover{opacity:.9}
+    .location-btn:disabled{opacity:.5;cursor:not-allowed}
+    .location-btn svg{width:18px;height:18px}
+    .privacy-note{font-size:.82rem;color:var(--muted);margin-bottom:12px;display:flex;align-items:flex-start;gap:6px}
+    .privacy-note svg{flex-shrink:0;width:14px;height:14px;margin-top:2px}
+    .resources-grid{display:grid;gap:12px;margin-top:16px}
+    @media(min-width:600px){.resources-grid{grid-template-columns:repeat(2,1fr)}}
+    .resource-card{
+      background:#fbfdff;border:1px solid rgba(11,95,255,0.06);
+      border-radius:10px;padding:14px;position:relative;
+      transition:box-shadow .2s ease;
+    }
+    .resource-card:hover{box-shadow:0 4px 12px rgba(12,24,40,.08)}
+    .resource-badge{
+      display:inline-block;font-size:.75rem;font-weight:600;
+      padding:3px 8px;border-radius:6px;margin-bottom:8px;
+    }
+    .badge-shelter{background:#e0f2fe;color:#0369a1}
+    .badge-legal{background:#f3e8ff;color:#7c3aed}
+    .badge-counseling{background:#dcfce7;color:#15803d}
+    .badge-emergency{background:#fee2e2;color:#b91c1c}
+    .badge-support{background:#ffedd5;color:#c2410c}
+    .badge-hotline{background:#fef3c7;color:#b45309}
+    .resource-name{font-weight:700;font-size:1.02rem;margin-bottom:6px;color:#111}
+    .resource-address{font-size:.9rem;color:var(--muted);margin-bottom:4px}
+    .resource-phone{font-size:.9rem;color:#111;margin-bottom:8px}
+    .resource-phone a{color:var(--accent);text-decoration:none}
+    .resource-distance{
+      position:absolute;top:12px;right:12px;
+      font-size:.78rem;background:#e6eefc;color:var(--accent);
+      padding:3px 8px;border-radius:999px;font-weight:600;
+    }
+    .resource-actions{display:flex;gap:8px;margin-top:10px}
+    .resource-actions a{
+      font-size:.85rem;padding:6px 10px;border-radius:6px;
+      text-decoration:none;font-weight:600;
+    }
+    .resource-actions .directions{background:#eef5ff;color:var(--accent)}
+    .resource-actions .call-btn{background:var(--accent);color:#fff}
+    .loading-spinner{
+      display:inline-block;width:18px;height:18px;
+      border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+      border-radius:50%;animation:spin 1s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fade-in{animation:fadeIn .3s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .error-msg{background:#fff2f2;color:var(--danger);padding:12px;border-radius:8px;font-size:.9rem}
+    .fallback-resources{margin-top:16px}
+    .fallback-resources h4{margin:0 0 10px;font-size:.95rem}
+    .fallback-resources ul{margin:0;padding-left:20px}
+    .fallback-resources li{margin-bottom:6px}
+    .fallback-resources a{color:var(--accent)}
+
     @media(min-width:720px){ .questionCard{padding:24px} }
   </style>
 </head>
@@ -103,6 +164,29 @@
       <h2 style="margin-top:0">Resources & Safety</h2>
       <p class="muted">US National Domestic Violence Hotline: <strong>1-800-799-7233</strong> (TTY 1-800-787-3224). Visit <a href="https://www.thehotline.org" target="_blank" rel="noopener">thehotline.org</a>.</p>
       <p class="muted">If outside the U.S., contact local emergency services or search for domestic violence helplines in your area.</p>
+    </div>
+
+    <!-- Local Resources Finder Card -->
+    <div class="card" id="localResourcesCard">
+      <h2 style="margin-top:0">Find Local Resources Near You</h2>
+      <p class="muted">Share your location to find nearby shelters, counseling services, legal aid, and support resources.</p>
+      
+      <div class="privacy-note">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        <span>Your location is used only to find nearby resources and is never stored or transmitted to any server.</span>
+      </div>
+
+      <button id="shareLocationBtn" class="location-btn" aria-label="Share my location to find local resources">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span id="locationBtnText">Share My Location</span>
+      </button>
+
+      <div id="resourcesResults"></div>
     </div>
 
     <footer class="tiny">
@@ -199,7 +283,6 @@
     closeModal.addEventListener('click', hideModal);
 
     function showModal(section){
-      // Populate modal content, then show
       modalBody.innerHTML = '';
       if(section === 'overview'){
         modalTitle.textContent = 'About the WAST and Danger Assessment (detailed)';
@@ -361,7 +444,7 @@
       return {score,baseYes,category,cls,expl};
     }
 
-    // Show combined results and local finder
+    // Show combined results
     function showCombinedResults(){
       const wast=computeWAST(); const da=computeDA();
       resultBox.style.display='block'; resultBox.className='result '+da.cls;
@@ -374,136 +457,517 @@
         <div style="margin-top:8px" class="tiny">Base yes count: ${da.baseYes}</div>
         <div style="margin-top:12px;font-weight:700">Resources: If in immediate danger call emergency services. US National Domestic Violence Hotline: 1-800-799-7233.</div>
         <div style="margin-top:12px"><button id="printBtn" class="secondary">Print / Save Result</button> <button id="viewDetailsBtn" class="ghost" type="button">View comprehensive description of results</button></div>
-
-        <!-- Local resource finder appended below results -->
-        <div id="localResourcesCard" class="card" style="margin-top:20px">
-          <h2 style="margin-top:0">Find Local Support Resources</h2>
-          <p class="muted">Enter your ZIP code or let us use your location to find nearby shelters and support services.</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <input type="text" id="zipInput" placeholder="Enter ZIP code" style="flex:1;min-width:120px;padding:8px;border:1px solid #ccc;border-radius:6px" />
-            <button id="zipSearchBtn">Search by ZIP</button>
-            <button id="locSearchBtn">Use my location</button>
-          </div>
-          <div id="resourcesResults" style="margin-top:12px"></div>
-        </div>
       `;
       progressFill.style.width='100%';
       document.getElementById('printBtn').addEventListener('click',()=>window.print());
       document.getElementById('viewDetailsBtn').addEventListener('click',()=> showModal('results'));
       resultBox.scrollIntoView({behavior:'smooth'});
       stage='DONE';
-      setupResourceFinder();
     }
 
-    // Resource finder wiring and API calls (keeps live API + fallback)
-    function setupResourceFinder(){
-      const zipInput=document.getElementById('zipInput');
-      const zipSearchBtn=document.getElementById('zipSearchBtn');
-      const locSearchBtn=document.getElementById('locSearchBtn');
-      const resultsDiv=document.getElementById('resourcesResults');
+    // ------------------- LOCAL RESOURCES FINDER -------------------
+    
+    // Curated database of IPV resources by region (sample data - expandable)
+    const resourceDatabase = [
+      // National resources (always shown as fallback)
+      {
+        name: "National Domestic Violence Hotline",
+        type: "hotline",
+        address: "Available 24/7 nationwide",
+        city: "National", state: "US", zip: "",
+        phone: "1-800-799-7233",
+        lat: 0, lng: 0,
+        website: "https://www.thehotline.org",
+        national: true
+      },
+      {
+        name: "National Sexual Assault Hotline (RAINN)",
+        type: "hotline",
+        address: "Available 24/7 nationwide",
+        city: "National", state: "US", zip: "",
+        phone: "1-800-656-4673",
+        lat: 0, lng: 0,
+        website: "https://www.rainn.org",
+        national: true
+      },
+      {
+        name: "National Child Abuse Hotline",
+        type: "hotline",
+        address: "Available 24/7 nationwide",
+        city: "National", state: "US", zip: "",
+        phone: "1-800-422-4453",
+        lat: 0, lng: 0,
+        website: "https://www.childhelp.org",
+        national: true
+      },
+      // Sample regional resources (expandable based on real data)
+      // New York Area
+      {
+        name: "Safe Horizon",
+        type: "shelter",
+        address: "2 Lafayette St",
+        city: "New York", state: "NY", zip: "10007",
+        phone: "1-800-621-4673",
+        lat: 40.7128, lng: -74.0060,
+        website: "https://www.safehorizon.org"
+      },
+      {
+        name: "NYC Family Justice Centers",
+        type: "legal",
+        address: "350 Jay St",
+        city: "Brooklyn", state: "NY", zip: "11201",
+        phone: "718-250-5113",
+        lat: 40.6932, lng: -73.9868,
+        website: "https://www1.nyc.gov/site/ocdv/programs/family-justice-centers.page"
+      },
+      {
+        name: "Sanctuary for Families",
+        type: "shelter",
+        address: "PO Box 1406",
+        city: "New York", state: "NY", zip: "10027",
+        phone: "212-349-6009",
+        lat: 40.7589, lng: -73.9851,
+        website: "https://sanctuaryforfamilies.org"
+      },
+      // Los Angeles Area
+      {
+        name: "Peace Over Violence",
+        type: "counseling",
+        address: "1015 Wilshire Blvd, Suite 200",
+        city: "Los Angeles", state: "CA", zip: "90017",
+        phone: "213-955-9090",
+        lat: 34.0522, lng: -118.2594,
+        website: "https://www.peaceoverviolence.org"
+      },
+      {
+        name: "Jenesse Center",
+        type: "shelter",
+        address: "P.O. Box 90837",
+        city: "Los Angeles", state: "CA", zip: "90009",
+        phone: "323-563-4000",
+        lat: 33.9425, lng: -118.2551,
+        website: "https://jenesse.org"
+      },
+      {
+        name: "1736 Family Crisis Center",
+        type: "shelter",
+        address: "2116 Arlington Ave",
+        city: "Los Angeles", state: "CA", zip: "90018",
+        phone: "310-379-3620",
+        lat: 34.0367, lng: -118.3126,
+        website: "https://www.1736familycrisiscenter.org"
+      },
+      // Chicago Area
+      {
+        name: "Metropolitan Family Services",
+        type: "counseling",
+        address: "1 N Dearborn St, Suite 1000",
+        city: "Chicago", state: "IL", zip: "60602",
+        phone: "312-986-4000",
+        lat: 41.8819, lng: -87.6278,
+        website: "https://www.metrofamily.org"
+      },
+      {
+        name: "Apna Ghar",
+        type: "shelter",
+        address: "4350 N Broadway",
+        city: "Chicago", state: "IL", zip: "60613",
+        phone: "773-334-4663",
+        lat: 41.9612, lng: -87.6579,
+        website: "https://www.apnaghar.org"
+      },
+      {
+        name: "Sarah's Inn",
+        type: "shelter",
+        address: "P.O. Box 6360",
+        city: "Oak Park", state: "IL", zip: "60302",
+        phone: "708-386-3305",
+        lat: 41.8850, lng: -87.7845,
+        website: "https://www.sarahsinn.org"
+      },
+      // Houston Area
+      {
+        name: "Houston Area Women's Center",
+        type: "shelter",
+        address: "1010 Waugh Dr",
+        city: "Houston", state: "TX", zip: "77019",
+        phone: "713-528-2121",
+        lat: 29.7604, lng: -95.3698,
+        website: "https://www.hawc.org"
+      },
+      {
+        name: "Aid to Victims of Domestic Abuse",
+        type: "shelter",
+        address: "P.O. Box 526227",
+        city: "Houston", state: "TX", zip: "77052",
+        phone: "713-224-9911",
+        lat: 29.7556, lng: -95.3591,
+        website: "https://www.avda-tx.org"
+      },
+      // Phoenix Area
+      {
+        name: "Arizona Coalition to End Sexual & Domestic Violence",
+        type: "support",
+        address: "2800 N Central Ave, Suite 1570",
+        city: "Phoenix", state: "AZ", zip: "85004",
+        phone: "602-279-2900",
+        lat: 33.4758, lng: -112.0740,
+        website: "https://www.acesdv.org"
+      },
+      {
+        name: "New Life Center",
+        type: "shelter",
+        address: "P.O. Box 16527",
+        city: "Phoenix", state: "AZ", zip: "85011",
+        phone: "623-932-4404",
+        lat: 33.4484, lng: -112.0740,
+        website: "https://www.newlifectr.org"
+      },
+      // Seattle Area
+      {
+        name: "New Beginnings",
+        type: "shelter",
+        address: "P.O. Box 75125",
+        city: "Seattle", state: "WA", zip: "98175",
+        phone: "206-522-9472",
+        lat: 47.6062, lng: -122.3321,
+        website: "https://www.newbegin.org"
+      },
+      {
+        name: "LifeWire",
+        type: "counseling",
+        address: "P.O. Box 6398",
+        city: "Bellevue", state: "WA", zip: "98008",
+        phone: "425-746-1940",
+        lat: 47.6101, lng: -122.2015,
+        website: "https://www.lifewire.org"
+      },
+      // Miami Area
+      {
+        name: "The Lodge / Victim Response Inc.",
+        type: "shelter",
+        address: "P.O. Box 430728",
+        city: "Miami", state: "FL", zip: "33143",
+        phone: "305-693-1170",
+        lat: 25.7617, lng: -80.1918,
+        website: "https://victimresponse.org"
+      },
+      {
+        name: "Switchboard of Miami - Domestic Violence",
+        type: "hotline",
+        address: "Miami-Dade County",
+        city: "Miami", state: "FL", zip: "",
+        phone: "305-358-4357",
+        lat: 25.7617, lng: -80.1918,
+        website: "https://www.switchboardmiami.org"
+      },
+      // Denver Area
+      {
+        name: "SafeHouse Denver",
+        type: "shelter",
+        address: "P.O. Box 18327",
+        city: "Denver", state: "CO", zip: "80218",
+        phone: "303-318-9989",
+        lat: 39.7392, lng: -104.9903,
+        website: "https://safehouse-denver.org"
+      },
+      {
+        name: "Rose Andom Center",
+        type: "support",
+        address: "1330 Fox St",
+        city: "Denver", state: "CO", zip: "80204",
+        phone: "720-337-4400",
+        lat: 39.7383, lng: -105.0073,
+        website: "https://roseandomcenter.org"
+      },
+      // Atlanta Area
+      {
+        name: "Partnership Against Domestic Violence",
+        type: "shelter",
+        address: "P.O. Box 170086",
+        city: "Atlanta", state: "GA", zip: "30317",
+        phone: "404-873-1766",
+        lat: 33.7490, lng: -84.3880,
+        website: "https://www.padv.org"
+      },
+      {
+        name: "Georgia Coalition Against Domestic Violence",
+        type: "support",
+        address: "114 New St, Suite B",
+        city: "Decatur", state: "GA", zip: "30030",
+        phone: "404-209-0280",
+        lat: 33.7748, lng: -84.2963,
+        website: "https://gcadv.org"
+      },
+      // Boston Area
+      {
+        name: "REACH Beyond Domestic Violence",
+        type: "shelter",
+        address: "P.O. Box 540024",
+        city: "Waltham", state: "MA", zip: "02454",
+        phone: "781-891-0724",
+        lat: 42.3765, lng: -71.2356,
+        website: "https://reachma.org"
+      },
+      {
+        name: "Casa Myrna",
+        type: "shelter",
+        address: "P.O. Box 18019",
+        city: "Boston", state: "MA", zip: "02118",
+        phone: "617-521-0100",
+        lat: 42.3601, lng: -71.0589,
+        website: "https://www.casamyrna.org"
+      }
+    ];
 
-      zipSearchBtn.addEventListener('click',()=>{
-        const zip=zipInput.value.trim();
-        if(!zip){resultsDiv.innerHTML='<p class="tiny">Please enter a ZIP code.</p>';return;}
-        fetchResourcesByZip(zip, resultsDiv);
+    // Calculate distance between two points using Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 3959; // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // Get badge class based on resource type
+    function getBadgeClass(type) {
+      const badges = {
+        'shelter': 'badge-shelter',
+        'legal': 'badge-legal',
+        'counseling': 'badge-counseling',
+        'emergency': 'badge-emergency',
+        'support': 'badge-support',
+        'hotline': 'badge-hotline'
+      };
+      return badges[type] || 'badge-support';
+    }
+
+    // Get type label
+    function getTypeLabel(type) {
+      const labels = {
+        'shelter': 'Shelter',
+        'legal': 'Legal Services',
+        'counseling': 'Counseling',
+        'emergency': 'Emergency',
+        'support': 'Support Services',
+        'hotline': 'Hotline'
+      };
+      return labels[type] || 'Resource';
+    }
+
+    // Format phone for tel: link
+    function formatPhoneLink(phone) {
+      return phone.replace(/[^0-9]/g, '');
+    }
+
+    // Find resources near coordinates
+    function findNearbyResources(lat, lng, maxDistance = 100) {
+      const nearby = [];
+      const national = [];
+      
+      resourceDatabase.forEach(resource => {
+        if (resource.national) {
+          national.push({...resource, distance: null});
+        } else {
+          const distance = calculateDistance(lat, lng, resource.lat, resource.lng);
+          if (distance <= maxDistance) {
+            nearby.push({...resource, distance: distance});
+          }
+        }
       });
+      
+      // Sort by distance
+      nearby.sort((a, b) => a.distance - b.distance);
+      
+      // Return nearby resources first, then national hotlines
+      return [...nearby.slice(0, 6), ...national];
+    }
 
-      locSearchBtn.addEventListener('click',()=>{
-        if(!navigator.geolocation){resultsDiv.innerHTML='<p class="tiny">Geolocation not supported.</p>';return;}
-        resultsDiv.innerHTML='<p class="tiny">Locating...</p>';
+    // Render resource card HTML
+    function renderResourceCard(resource, index) {
+      const distanceHtml = resource.distance !== null 
+        ? `<span class="resource-distance">${resource.distance.toFixed(1)} mi</span>` 
+        : '';
+      
+      const directionsUrl = resource.lat && resource.lng && !resource.national
+        ? `https://www.google.com/maps/dir/?api=1&destination=${resource.lat},${resource.lng}`
+        : null;
+      
+      return `
+        <div class="resource-card fade-in" style="animation-delay:${index * 100}ms">
+          <span class="resource-badge ${getBadgeClass(resource.type)}">${getTypeLabel(resource.type)}</span>
+          ${distanceHtml}
+          <div class="resource-name">${resource.name}</div>
+          <div class="resource-address">${resource.address}</div>
+          ${resource.city ? `<div class="resource-address">${resource.city}, ${resource.state} ${resource.zip}</div>` : ''}
+          <div class="resource-phone">
+            <a href="tel:${formatPhoneLink(resource.phone)}">${resource.phone}</a>
+          </div>
+          <div class="resource-actions">
+            <a href="tel:${formatPhoneLink(resource.phone)}" class="call-btn">Call Now</a>
+            ${directionsUrl ? `<a href="${directionsUrl}" target="_blank" rel="noopener" class="directions">Get Directions</a>` : ''}
+            ${resource.website ? `<a href="${resource.website}" target="_blank" rel="noopener" class="directions">Website</a>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Show fallback resources when location fails
+    function showFallbackResources(resultsDiv, errorMessage) {
+      const nationalResources = resourceDatabase.filter(r => r.national);
+      
+      resultsDiv.innerHTML = `
+        <div class="error-msg" style="margin-bottom:16px">
+          <strong>Unable to get your location:</strong> ${errorMessage}
+        </div>
+        <div class="fallback-resources">
+          <h4>National Resources Available 24/7</h4>
+          <div class="resources-grid">
+            ${nationalResources.map((r, i) => renderResourceCard(r, i)).join('')}
+          </div>
+          <div style="margin-top:16px">
+            <h4>Find Local Resources Online</h4>
+            <ul>
+              <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
+              <li><a href="https://www.domesticshelters.org/help" target="_blank" rel="noopener">Search shelters at DomesticShelters.org</a></li>
+              <li><a href="https://www.womenslaw.org/find-help/advocates-and-shelters" target="_blank" rel="noopener">Legal help at WomensLaw.org</a></li>
+              <li><a href="https://www.rainn.org/get-help" target="_blank" rel="noopener">Sexual assault resources at RAINN.org</a></li>
+            </ul>
+          </div>
+        </div>
+      `;
+    }
+
+    // Display resources on the page
+    function displayResources(resources, resultsDiv, userLocation) {
+      if (resources.length === 0) {
+        showFallbackResources(resultsDiv, 'No resources found in your area.');
+        return;
+      }
+
+      const localResources = resources.filter(r => !r.national);
+      const nationalResources = resources.filter(r => r.national);
+
+      let html = '';
+      
+      if (localResources.length > 0) {
+        html += `
+          <h4 style="margin:0 0 12px;font-size:.95rem">Resources Near You</h4>
+          <div class="resources-grid">
+            ${localResources.map((r, i) => renderResourceCard(r, i)).join('')}
+          </div>
+        `;
+      }
+
+      if (nationalResources.length > 0) {
+        html += `
+          <h4 style="margin:${localResources.length > 0 ? '20px' : '0'} 0 12px;font-size:.95rem">National Hotlines (24/7)</h4>
+          <div class="resources-grid">
+            ${nationalResources.map((r, i) => renderResourceCard(r, i + localResources.length)).join('')}
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="fallback-resources" style="margin-top:20px">
+          <h4>Additional Online Resources</h4>
+          <ul>
+            <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">More resources via TheHotline.org</a></li>
+            <li><a href="https://www.domesticshelters.org/help" target="_blank" rel="noopener">Search more shelters at DomesticShelters.org</a></li>
+            <li><a href="https://www.womenslaw.org/find-help/advocates-and-shelters" target="_blank" rel="noopener">Legal help at WomensLaw.org</a></li>
+          </ul>
+        </div>
+      `;
+
+      resultsDiv.innerHTML = html;
+    }
+
+    // Initialize the location-based resource finder
+    function initResourceFinder() {
+      const shareLocationBtn = document.getElementById('shareLocationBtn');
+      const locationBtnText = document.getElementById('locationBtnText');
+      const resultsDiv = document.getElementById('resourcesResults');
+
+      shareLocationBtn.addEventListener('click', () => {
+        // Check if geolocation is supported
+        if (!navigator.geolocation) {
+          showFallbackResources(resultsDiv, 'Geolocation is not supported by your browser.');
+          return;
+        }
+
+        // Show loading state
+        shareLocationBtn.disabled = true;
+        locationBtnText.innerHTML = '<span class="loading-spinner"></span> Locating...';
+
+        // Request location
         navigator.geolocation.getCurrentPosition(
-          pos=>fetchResourcesByCoords(pos.coords.latitude,pos.coords.longitude, resultsDiv),
-          err=>{resultsDiv.innerHTML='<p class="tiny">Location permission denied.</p>';}
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Update button to show success
+            locationBtnText.textContent = 'Location Found';
+            
+            // Find and display nearby resources
+            const nearbyResources = findNearbyResources(lat, lng);
+            displayResources(nearbyResources, resultsDiv, {lat, lng});
+            
+            // Scroll to results
+            resultsDiv.scrollIntoView({behavior: 'smooth', block: 'start'});
+            
+            // Reset button after a moment
+            setTimeout(() => {
+              shareLocationBtn.disabled = false;
+              locationBtnText.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Update Location
+              `;
+            }, 2000);
+          },
+          (error) => {
+            // Handle different error types
+            let errorMessage = 'Unable to retrieve your location.';
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'Location permission was denied. Please enable location access in your browser settings.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Location information is unavailable.';
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'Location request timed out. Please try again.';
+                break;
+            }
+            
+            showFallbackResources(resultsDiv, errorMessage);
+            
+            // Reset button
+            shareLocationBtn.disabled = false;
+            locationBtnText.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width:18px;height:18px">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Try Again
+            `;
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // Cache for 5 minutes
+          }
         );
       });
     }
 
-    // Fetch by ZIP (uses findhelp.org, may require API key/CORS; falls back to helpful links)
-    async function fetchResourcesByZip(zip, resultsDiv){
-      resultsDiv.innerHTML='<p class="tiny">Searching resources near '+zip+'...</p>';
-      try{
-        const resp=await fetch(`https://api.findhelp.org/api/v1/search/?postal=${encodeURIComponent(zip)}&limit=5`);
-        if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
-        const data=await resp.json();
-
-        if(!data || !data.results || !data.results.length){
-          resultsDiv.innerHTML = `
-            <div class="tiny">No resources found from the search API for <strong>${zip}</strong>.</div>
-            <div style="margin-top:8px" class="tiny">Try these options:</div>
-            <ul class="tiny">
-              <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-              <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
-            </ul>`;
-          return;
-        }
-
-        showResources(data, resultsDiv);
-      }catch(e){
-        console.error('Resource fetch error (zip):', e);
-        resultsDiv.innerHTML = `
-          <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
-          <div style="margin-top:8px" class="tiny">Try these options instead:</div>
-          <ul class="tiny">
-            <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-            <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-            <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(zip)}" target="_blank" rel="noopener">Search shelters near ${zip} on Google Maps</a></li>
-          </ul>
-          <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
-      }
-    }
-
-    // Fetch by coords (similar behavior)
-    async function fetchResourcesByCoords(lat, lon, resultsDiv){
-      resultsDiv.innerHTML='<p class="tiny">Searching resources near your location...</p>';
-      try{
-        const resp=await fetch(`https://api.findhelp.org/api/v1/search/?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&limit=5`);
-        if(!resp.ok) throw new Error(resp.status+' '+resp.statusText);
-        const data=await resp.json();
-
-        if(!data || !data.results || !data.results.length){
-          resultsDiv.innerHTML = `
-            <div class="tiny">No resources found from the search API for your location.</div>
-            <div style="margin-top:8px" class="tiny">Try these options:</div>
-            <ul class="tiny">
-              <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-              <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-              <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(lat)},${encodeURIComponent(lon)}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
-            </ul>`;
-          return;
-        }
-
-        showResources(data, resultsDiv);
-      }catch(e){
-        console.error('Resource fetch error (coords):', e);
-        resultsDiv.innerHTML = `
-          <div class="tiny">Unable to fetch resources from the search API. This may be due to network/CORS restrictions or the API requiring an API key.</div>
-          <div style="margin-top:8px" class="tiny">Try these options instead:</div>
-          <ul class="tiny">
-            <li>Call the US National Domestic Violence Hotline: <strong>1-800-799-7233</strong></li>
-            <li><a href="https://www.thehotline.org/get-help/" target="_blank" rel="noopener">Find local resources via TheHotline.org</a></li>
-            <li><a href="https://www.google.com/maps/search/domestic+violence+shelter+near+${encodeURIComponent(lat)},${encodeURIComponent(lon)}" target="_blank" rel="noopener">Search shelters near your location on Google Maps</a></li>
-          </ul>
-          <p class="tiny">If you manage a server, consider proxying the API request server-side or supplying an API key to the search provider.</p>`;
-      }
-    }
-
-    // Render results from API
-    function showResources(data, container){
-      if(!data || !data.results || !data.results.length){ container.innerHTML='<p class="tiny">No resources found nearby.</p>'; return; }
-      const items=data.results.map(r=>`
-        <div style="padding:8px 0;border-bottom:1px solid #eee">
-          <strong>${r.name||'Unnamed Resource'}</strong><br/>
-          ${r.address1||''} ${r.city||''}<br/>
-          ${r.phone_number?'<a href="tel:'+r.phone_number+'">'+r.phone_number+'</a><br/>':''}
-          ${r.url?'<a href="'+r.url+'" target="_blank" rel="noopener">Website</a>':''}
-        </div>`).join('');
-      container.innerHTML='<div>'+items+'</div>';
-    }
-
-    // Initial render (app hidden until consent)
-    renderCurrent();
-
+    // Initialize the resource finder when DOM is ready
+    document.addEventListener('DOMContentLoaded', initResourceFinder);
   </script>
 </body>
 </html>
